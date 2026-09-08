@@ -1,0 +1,6 @@
+/target
+
+# Local Claude Code skill cache -- not part of the plugin.
+/.agents/
+/.claude/
+/skills-lock.json

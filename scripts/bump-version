@@ -1,0 +1,174 @@
+#!/usr/bin/env perl
+# Bumps herdr-pomodoro's version in lockstep across Cargo.toml and
+# herdr-plugin.toml, promotes the CHANGELOG.md [Unreleased] section into a
+# dated release, refreshes Cargo.lock, and (inside a git repo) commits and
+# tags the release. Cargo.toml's `version` is the single source of truth;
+# `src/main.rs` reads it back via `env!("CARGO_PKG_VERSION")`.
+use strict;
+use warnings;
+use FindBin qw($RealBin);
+use File::Spec;
+use POSIX qw(strftime);
+
+my $root         = File::Spec->catdir($RealBin, '..');
+chdir($root) or die "cannot chdir to $root: $!\n";
+my $cargo_toml   = File::Spec->catfile($root, 'Cargo.toml');
+my $plugin_toml  = File::Spec->catfile($root, 'herdr-plugin.toml');
+my $changelog    = File::Spec->catfile($root, 'CHANGELOG.md');
+
+sub usage {
+    my ($code) = @_;
+    print <<'USAGE';
+usage: scripts/bump-version <major|minor|patch|X.Y.Z> [options]
+
+Bumps the version in Cargo.toml and herdr-plugin.toml together, promotes
+CHANGELOG.md's [Unreleased] section to the new version, refreshes
+Cargo.lock, and (unless --no-git) commits and tags the release.
+
+Options:
+  --no-git       Update files but skip the git commit/tag
+  --allow-empty  Allow bumping with an empty [Unreleased] section
+  --dry-run      Print what would change without writing or committing
+  -h, --help     Show this help
+
+Examples:
+  scripts/bump-version patch
+  scripts/bump-version minor --no-git
+  scripts/bump-version 1.0.0 --dry-run
+USAGE
+    exit($code);
+}
+
+my ($bump, $no_git, $allow_empty, $dry_run);
+for (@ARGV) {
+    if ($_ eq '-h' || $_ eq '--help')   { usage(0); }
+    elsif ($_ eq '--no-git')            { $no_git = 1; }
+    elsif ($_ eq '--allow-empty')       { $allow_empty = 1; }
+    elsif ($_ eq '--dry-run')           { $dry_run = 1; }
+    elsif (!defined $bump)              { $bump = $_; }
+    else                                { die "unexpected argument: $_\n"; }
+}
+usage(1) unless defined $bump;
+
+sub read_file {
+    my ($path) = @_;
+    open my $fh, '<', $path or die "cannot read $path: $!\n";
+    local $/;
+    return <$fh>;
+}
+sub write_file {
+    my ($path, $content) = @_;
+    open my $fh, '>', $path or die "cannot write $path: $!\n";
+    print $fh $content;
+}
+
+# ---- read + validate current versions ---------------------------------
+
+my $cargo_src = read_file($cargo_toml);
+my @cargo_versions = $cargo_src =~ /^version = "([^"]+)"/mg;
+die "expected exactly one top-level version in Cargo.toml, found " . scalar(@cargo_versions) . "\n"
+    unless @cargo_versions == 1;
+my $current = $cargo_versions[0];
+
+my $plugin_src = read_file($plugin_toml);
+my @plugin_versions = $plugin_src =~ /^version = "([^"]+)"/mg;
+die "expected exactly one top-level version in herdr-plugin.toml, found " . scalar(@plugin_versions) . "\n"
+    unless @plugin_versions == 1;
+if ($plugin_versions[0] ne $current) {
+    warn "warning: Cargo.toml ($current) and herdr-plugin.toml ($plugin_versions[0]) were already out of sync -- bringing both to the new version\n";
+}
+
+sub parse_semver {
+    my ($v) = @_;
+    die "not a valid semver: $v\n" unless $v =~ /^(\d+)\.(\d+)\.(\d+)$/;
+    return ($1, $2, $3);
+}
+
+my $new;
+if ($bump =~ /^\d+\.\d+\.\d+$/) {
+    $new = $bump;
+} elsif ($bump =~ /^(major|minor|patch)$/) {
+    my ($maj, $min, $pat) = parse_semver($current);
+    if    ($bump eq 'major') { $maj++; $min = 0; $pat = 0; }
+    elsif ($bump eq 'minor') { $min++; $pat = 0; }
+    else                     { $pat++; }
+    $new = "$maj.$min.$pat";
+} else {
+    die "unrecognized bump '$bump' (expected major, minor, patch, or X.Y.Z)\n";
+}
+die "new version ($new) is the same as the current version\n" if $new eq $current;
+
+# ---- promote CHANGELOG.md [Unreleased] ---------------------------------
+
+my $changelog_src = read_file($changelog);
+die "CHANGELOG.md has no [Unreleased] section\n"
+    unless $changelog_src =~ /^## \[Unreleased\]\n/m;
+
+my ($unreleased) = $changelog_src =~ /^## \[Unreleased\]\n(.*?)(?=^## \[|\z)/ms;
+(my $trimmed = $unreleased) =~ s/^\s+|\s+$//g;
+if ($trimmed eq '' && !$allow_empty) {
+    die "the [Unreleased] section is empty -- document changes before bumping (or pass --allow-empty)\n";
+}
+
+my $date = strftime('%Y-%m-%d', localtime);
+my $new_section = "## [Unreleased]\n\n## [$new] - $date\n" . ($trimmed eq '' ? "\n" : $unreleased);
+(my $new_changelog = $changelog_src) =~ s/\Q## [Unreleased]\n$unreleased\E/$new_section/s;
+$new_changelog =~ s/\n{3,}/\n\n/g;
+
+my ($repo_url) = $cargo_src =~ /^repository\s*=\s*"([^"]+)"/m;
+if ($repo_url) {
+    if ($new_changelog =~ /^\[Unreleased\]: /m) {
+        $new_changelog =~ s{^\[Unreleased\]: .*$}{[Unreleased]: $repo_url/compare/v$new...HEAD}m;
+        my @lines = split /\n/, $new_changelog, -1;
+        for my $i (0 .. $#lines) {
+            if ($lines[$i] =~ /^\[Unreleased\]: /) {
+                splice(@lines, $i + 1, 0, "[$new]: $repo_url/compare/v$current...v$new");
+                last;
+            }
+        }
+        $new_changelog = join("\n", @lines);
+    } else {
+        $new_changelog .= "\n[Unreleased]: $repo_url/compare/v$new...HEAD\n";
+        $new_changelog .= "[$new]: $repo_url/compare/v$current...v$new\n";
+    }
+}
+
+# ---- bump Cargo.toml / herdr-plugin.toml -------------------------------
+
+(my $new_cargo_src  = $cargo_src)  =~ s/^version = "\Q$current\E"/version = "$new"/m;
+(my $new_plugin_src = $plugin_src) =~ s/^version = "\Q$plugin_versions[0]\E"/version = "$new"/m;
+
+if ($dry_run) {
+    print "would bump herdr-pomodoro: $current -> $new\n";
+    print "\n--- new CHANGELOG.md [$new] section ---\n";
+    print "## [$new] - $date\n$unreleased";
+    print "\n(dry run -- no files written, no git actions taken)\n";
+    exit 0;
+}
+
+print "bumping herdr-pomodoro: $current -> $new\n";
+write_file($cargo_toml, $new_cargo_src);
+write_file($plugin_toml, $new_plugin_src);
+write_file($changelog, $new_changelog);
+
+# Refresh Cargo.lock's own version entry for the package. Non-fatal: cargo
+# will fix this on the next build regardless.
+if (system('cargo', 'check', '-q') != 0) {
+    warn "warning: `cargo check` failed -- Cargo.lock may be stale until the next build\n";
+}
+
+my $in_git_repo = (system('git rev-parse --is-inside-work-tree >/dev/null 2>&1') == 0);
+if ($no_git) {
+    print "skipping git commit/tag (--no-git)\n";
+} elsif (!$in_git_repo) {
+    print "no git repository detected -- skipping commit/tag\n";
+} else {
+    my @files = ($cargo_toml, 'Cargo.lock', $plugin_toml, $changelog);
+    (system('git', 'add', @files) == 0) or die "git add failed\n";
+    (system('git', 'commit', '-q', '-m', "chore(release): v$new") == 0) or die "git commit failed\n";
+    (system('git', 'tag', '-a', "v$new", '-m', "v$new") == 0) or die "git tag failed\n";
+    print "committed and tagged v$new\n";
+    print "next: git push && git push origin v$new\n";
+}
+
+print "done: herdr-pomodoro v$new\n";

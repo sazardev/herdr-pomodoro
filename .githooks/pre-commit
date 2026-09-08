@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Fast, cheap gate: formatting + compile errors. Kept light on purpose --
+# clippy and tests run at push time instead (see .githooks/pre-push).
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-commit: cargo fmt --check"
+if ! cargo fmt --all -- --check; then
+    echo "pre-commit: formatting issues -- run 'cargo fmt' and re-stage" >&2
+    exit 1
+fi
+
+echo "pre-commit: cargo check"
+if ! cargo check --all-targets --quiet; then
+    echo "pre-commit: compile errors -- fix them before committing" >&2
+    exit 1
+fi

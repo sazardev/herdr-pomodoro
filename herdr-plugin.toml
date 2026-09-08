@@ -1,0 +1,95 @@
+id = "sazardev.pomodoro"
+name = "Pomodoro"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Minimal, elegant, theme-adaptive Pomodoro timer -- dockable pane, quick-glance popup, and global shortcuts."
+platforms = ["linux", "macos"]
+
+[[build]]
+command = ["cargo", "build", "--release"]
+
+# Main dockable widget. Open it wherever you like (split/tab/zoomed/overlay)
+# with `herdr plugin pane open`, then use Herdr's normal pane.move/swap to
+# park it in a drawer on the left, right, wherever suits your layout.
+[[panes]]
+id = "timer"
+title = "Pomodoro"
+command = ["./target/release/herdr-pomodoro", "run"]
+
+# Small transient popup for a quick glance without touching your layout.
+[[panes]]
+id = "quick"
+title = "Pomodoro"
+placement = "popup"
+width = 44
+height = 14
+command = ["./target/release/herdr-pomodoro", "run"]
+
+[[actions]]
+id = "open"
+title = "Pomodoro: open pane"
+contexts = ["workspace"]
+command = ["./target/release/herdr-pomodoro", "open"]
+
+[[actions]]
+id = "toggle"
+title = "Pomodoro: start / pause"
+contexts = ["workspace"]
+command = ["./target/release/herdr-pomodoro", "toggle"]
+
+[[actions]]
+id = "skip"
+title = "Pomodoro: skip to next phase"
+contexts = ["workspace"]
+command = ["./target/release/herdr-pomodoro", "skip"]
+
+[[actions]]
+id = "reset"
+title = "Pomodoro: reset current phase"
+contexts = ["workspace"]
+command = ["./target/release/herdr-pomodoro", "reset"]
+
+[[actions]]
+id = "cycle-mood"
+title = "Pomodoro: cycle view (minimal/digital/analog/flashy)"
+contexts = ["workspace"]
+command = ["./target/release/herdr-pomodoro", "cycle-mood"]
+
+[[actions]]
+id = "cycle-preset"
+title = "Pomodoro: cycle preset"
+contexts = ["workspace"]
+command = ["./target/release/herdr-pomodoro", "cycle-preset"]
+
+# Default shortcuts live under prefix+alt+... to avoid colliding with
+# Herdr's own prefix+<letter> bindings. Rebind freely in your own
+# ~/.config/herdr/config.toml -- these are just sane defaults.
+[[keys.command]]
+key = "prefix+alt+p"
+type = "plugin_action"
+command = "sazardev.pomodoro.open"
+description = "pomodoro: open/focus pane"
+
+[[keys.command]]
+key = "prefix+alt+s"
+type = "plugin_action"
+command = "sazardev.pomodoro.toggle"
+description = "pomodoro: start/pause"
+
+[[keys.command]]
+key = "prefix+alt+n"
+type = "plugin_action"
+command = "sazardev.pomodoro.skip"
+description = "pomodoro: skip phase"
+
+[[keys.command]]
+key = "prefix+alt+r"
+type = "plugin_action"
+command = "sazardev.pomodoro.reset"
+description = "pomodoro: reset phase"
+
+[[keys.command]]
+key = "prefix+alt+m"
+type = "plugin_action"
+command = "sazardev.pomodoro.cycle-mood"
+description = "pomodoro: cycle view"
