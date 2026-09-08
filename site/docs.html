@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs -- herdr-pomodoro</title>
+<meta name="description" content="herdr-pomodoro documentation: first-run setup, keybindings, history, configuration, architecture, and platform notes.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site">
+  <nav class="nav">
+    <a class="brand" href="index.html">herdr-pomodoro<span class="dot">.</span></a>
+    <div class="nav-links">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#screenshots">Screenshots</a>
+      <a href="index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="versioning.html">Versioning</a>
+      <a href="https://github.com/sazardev/herdr-pomodoro">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<main class="wrap" id="top">
+
+  <section class="hero" style="border-top:none; padding-bottom:0;">
+    <h1>Docs<span class="dot">.</span></h1>
+    <p class="tagline">
+      Configuration, keybindings, history, and how the plugin is put
+      together. For install steps, see the
+      <a href="index.html#install">home page</a>.
+    </p>
+  </section>
+
+  <section id="setup">
+    <h2><span class="n">01</span>First-run setup</h2>
+    <p>
+      A <code>[[startup]]</code> hook opens the main pane straight into a
+      setup wizard the first time Herdr starts after install -- pick your
+      default view, preset, sound, notifications, and auto-start behavior,
+      with a live preview of each view as you cycle through them.
+      <code>enter</code> saves and starts; <code>esc</code>/<code>q</code>
+      skips and keeps the defaults. It only shows once (tracked by a marker
+      file in the plugin's state dir); redo it any time with
+      <code>prefix+alt+p</code> after running:
+    </p>
+    <pre><code>herdr plugin action invoke reset-onboarding --plugin sazardev.pomodoro</code></pre>
+    <p>
+      Herdr doesn't run plugin commands at install/link time, only when its
+      server (re)starts -- so on a session that's already running (like
+      right after <code>herdr plugin link</code>), the wizard shows the
+      first time you open the pane yourself rather than instantly. From the
+      next <code>herdr</code> launch onward, the startup hook opens it for
+      you automatically until it's been completed or skipped once.
+    </p>
+  </section>
+
+  <section id="keybindings">
+    <h2><span class="n">02</span>Keybindings</h2>
+
+    <p>All global shortcuts live under <code>prefix+alt+...</code> so they
+    don't collide with Herdr's own <code>prefix+&lt;letter&gt;</code>
+    bindings. Rebind any of them in your own
+    <code>~/.config/herdr/config.toml</code> (<code>[[keys.command]]</code>,
+    <code>type = "plugin_action"</code>,
+    <code>command = "sazardev.pomodoro.&lt;action&gt;"</code>).</p>
+
+    <table class="keys">
+      <tr><th>shortcut</th><th>action</th></tr>
+      <tr><td>prefix+alt+p</td><td>Open / focus the pane</td></tr>
+      <tr><td>prefix+alt+s</td><td>Start / pause</td></tr>
+      <tr><td>prefix+alt+n</td><td>Skip to next phase</td></tr>
+      <tr><td>prefix+alt+r</td><td>Reset current phase</td></tr>
+      <tr><td>prefix+alt+m</td><td>Cycle view (mood)</td></tr>
+    </table>
+
+    <p style="margin-top:24px;">In-pane keys, once the pane is focused:</p>
+    <table class="keys">
+      <tr><th>key</th><th>action</th></tr>
+      <tr><td>space / s</td><td>Start / pause / resume</td></tr>
+      <tr><td>n</td><td>Skip to next phase</td></tr>
+      <tr><td>r</td><td>Reset current phase</td></tr>
+      <tr><td>R</td><td>Full reset (back to session 1)</td></tr>
+      <tr><td>m</td><td>Cycle view: minimal -&gt; digital -&gt; analog -&gt; flashy</td></tr>
+      <tr><td>p</td><td>Cycle preset</td></tr>
+      <tr><td>i</td><td>Toggle work-session history</td></tr>
+      <tr><td>?</td><td>Toggle help</td></tr>
+      <tr><td>q / esc</td><td>Close the pane</td></tr>
+    </table>
+
+    <p style="margin-top:24px;">
+      Changing mood or preset from anywhere (a global shortcut,
+      <code>herdr plugin action invoke</code>, or the in-pane keys) shows up
+      live in an already-open pane within ~200ms -- there's no need to
+      reopen it.
+    </p>
+    <p>
+      Closing the pane does <b>not</b> pause the timer: remaining time is
+      derived from a stored end-timestamp, so it keeps counting down
+      accurately whether or not anything is watching it, and a
+      phase-complete bell/notification still fires the next time any
+      <code>herdr-pomodoro</code> process (a pane, or a one-shot action)
+      touches the state file.
+    </p>
+  </section>
+
+  <section id="history">
+    <h2><span class="n">03</span>History</h2>
+    <p>
+      Every completed work session (finished naturally or skipped) appends
+      one timestamp to <code>$HERDR_PLUGIN_STATE_DIR/history.log</code> -- a
+      plain-text file, one epoch-millisecond integer per line, small enough
+      (well under a kilobyte a year) to never need rotation. Press
+      <code>i</code> in the pane for a small overlay with rolling last-24h /
+      last-7-days / all-time counts, or run:
+    </p>
+    <pre><code>herdr-pomodoro history</code></pre>
+    <p>
+      for the same numbers from the command line. There's no calendar
+      day/week bucketing (would need a timezone-aware date crate this
+      plugin otherwise has no reason to depend on) -- the windows are
+      relative to <em>now</em>.
+    </p>
+  </section>
+
+  <section id="configuration">
+    <h2><span class="n">04</span>Configuration</h2>
+    <p>
+      <code>herdr plugin config-dir sazardev.pomodoro</code> prints the
+      config directory. On first run it's seeded with a commented
+      <code>config.toml</code>:
+    </p>
+    <pre><code>active_preset = "classic"
+mood = "digital"
+auto_start_next = false
+sound = true
+notify = true
+
+[[preset]]
+name = "classic"
+work_minutes = 25
+short_break_minutes = 5
+long_break_minutes = 15
+sessions_before_long_break = 4
+
+# ...deep-work, quick...
+
+[colors]
+# work = "#ff6b6b"
+# short_break = "#51cf66"
+# long_break = "#339af0"</code></pre>
+    <p>
+      Add your own <code>[[preset]]</code> blocks freely;
+      <code>p</code> / <code>cycle-preset</code> walks them in file order.
+    </p>
+  </section>
+
+  <section id="architecture">
+    <h2><span class="n">05</span>Architecture notes</h2>
+    <ul>
+      <li>State lives in <code>$HERDR_PLUGIN_STATE_DIR/state.json</code>;
+      config in <code>$HERDR_PLUGIN_CONFIG_DIR/config.toml</code>. Both are
+      plain files the plugin owns outright (there's no plugin storage API
+      in Herdr's v1 plugin surface).</li>
+      <li>Every subcommand (<code>start</code>, <code>pause</code>,
+      <code>toggle</code>, <code>skip</code>, <code>reset</code>,
+      <code>cycle-mood</code>, <code>cycle-preset</code>,
+      <code>status</code>) is a quick read-modify-write against that shared
+      state and exits immediately -- that's what makes them safe to bind as
+      one-shot Herdr actions/shortcuts. The interactive <code>run</code> TUI
+      polls the same files (~200ms) so external changes and its own
+      keypresses stay in sync without any IPC.</li>
+      <li><code>open</code> shells out to
+      <code>$HERDR_BIN_PATH plugin pane open</code> using
+      <code>$HERDR_PLUGIN_ID</code>, so it works regardless of what id you
+      give the plugin and whether Herdr is reachable over a Unix socket or
+      a Windows named pipe.</li>
+      <li>The main <code>timer</code> pane declares
+      <code>placement = "split"</code> explicitly in
+      <code>herdr-plugin.toml</code> rather than relying on Herdr's
+      default: an unspecified placement registers as <code>overlay</code>,
+      which opens fullscreen over the active pane and captures all input.</li>
+    </ul>
+  </section>
+
+  <section id="platforms">
+    <h2><span class="n">06</span>Platforms</h2>
+    <p>
+      Built and tested on Linux (WSL2) against Herdr 0.8.2.
+      <code>platforms</code> in the manifest is currently
+      <code>["linux", "macos"]</code>; macOS should work as-is (same
+      Rust/crossterm stack) but hasn't been tested here. Windows needs a
+      couple of manifest tweaks this repo doesn't ship yet: build with
+      <code>cargo build --release</code> targeting
+      <code>x86_64-pc-windows-msvc</code>, and change the
+      <code>command</code> arrays to point at
+      <code>.\target\release\herdr-pomodoro.exe</code> (Herdr resolves
+      <code>PATHEXT</code> shims for bare commands on <code>PATH</code>,
+      but not for explicit relative paths, so the <code>.exe</code> needs
+      to be spelled out).
+    </p>
+  </section>
+
+  <section id="more">
+    <h2><span class="n">07</span>More</h2>
+    <p>
+      Release process and full changelog: <a href="versioning.html">Versioning</a>.
+      Commit convention and local git hook setup:
+      <a href="https://github.com/sazardev/herdr-pomodoro/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  <div>MIT License &middot; <a href="https://github.com/sazardev/herdr-pomodoro">github.com/sazardev/herdr-pomodoro</a></div>
+  <div class="made">built for <a href="https://herdr.dev">Herdr</a>, written in Rust</div>
+</footer>
+
+</body>
+</html>

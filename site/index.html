@@ -13,10 +13,11 @@
   <nav class="nav">
     <a class="brand" href="#top">herdr-pomodoro<span class="dot">.</span></a>
     <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#screenshots">Screenshots</a>
-      <a href="#install">Install</a>
-      <a href="#versioning">Versioning</a>
+      <a href="index.html#features">Features</a>
+      <a href="index.html#screenshots">Screenshots</a>
+      <a href="index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="versioning.html">Versioning</a>
       <a href="https://github.com/sazardev/herdr-pomodoro">GitHub</a>
     </div>
   </nav>
@@ -34,7 +35,7 @@
     </p>
 
     <div class="badges">
-      <span class="badge">version <b>0.1.0</b></span>
+      <span class="badge">version <b>0.2.0</b></span>
       <span class="badge">written in <b>Rust</b></span>
       <span class="badge">license <b>MIT</b></span>
       <span class="badge">no daemon, no deps at runtime</span>
@@ -209,31 +210,17 @@ herdr plugin link .</code></pre>
     </table>
   </section>
 
-  <section id="versioning">
-    <h2><span class="n">05</span>Versioning</h2>
+  <section id="more">
+    <h2><span class="n">05</span>More</h2>
     <p>
-      herdr-pomodoro follows <a href="https://semver.org/">Semantic
-      Versioning</a>. <code>Cargo.toml</code>'s <code>[package] version</code>
-      is the single source of truth, kept in lockstep with
-      <code>herdr-plugin.toml</code>; the binary reports it back with
-      <code>herdr-pomodoro --version</code>. Full history in
-      <a href="https://github.com/sazardev/herdr-pomodoro/blob/main/CHANGELOG.md">CHANGELOG.md</a>.
+      Full configuration reference, keybindings, history, and architecture
+      notes live on the <a href="docs.html">docs page</a>. Release history
+      and the versioning policy live on the
+      <a href="versioning.html">versioning page</a>.
     </p>
-
-    <div class="changelog-entry">
-      <div class="ver">0.1.0</div>
-      <ul>
-        <li>Four static, text-only moods with auto-downgrade for small panes</li>
-        <li>Classic / deep-work / quick presets, plus custom presets</li>
-        <li>Theme-adaptive rendering via the standard ANSI palette</li>
-        <li>Global shortcuts and one-shot subcommands</li>
-        <li>Desktop notifications and terminal bell on phase completion</li>
-        <li>No-daemon design: timer truth is a wall-clock end-timestamp</li>
-        <li>Analog progress ring with rim ticks and a position marker</li>
-        <li>Toasts (started / paused / resumed / phase-complete) in every mood</li>
-        <li>First-run setup wizard with a live preview per view</li>
-        <li>Work-session history with a rolling stats overlay</li>
-      </ul>
+    <div class="cta-row" style="justify-content:flex-start;">
+      <a class="btn" href="docs.html">Read the docs</a>
+      <a class="btn" href="versioning.html">Versioning &amp; changelog</a>
     </div>
   </section>
 

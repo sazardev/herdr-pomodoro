@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Versioning -- herdr-pomodoro</title>
+<meta name="description" content="herdr-pomodoro's versioning policy, release process, and release history.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site">
+  <nav class="nav">
+    <a class="brand" href="index.html">herdr-pomodoro<span class="dot">.</span></a>
+    <div class="nav-links">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#screenshots">Screenshots</a>
+      <a href="index.html#install">Install</a>
+      <a href="docs.html">Docs</a>
+      <a href="versioning.html">Versioning</a>
+      <a href="https://github.com/sazardev/herdr-pomodoro">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<main class="wrap" id="top">
+
+  <section class="hero" style="border-top:none; padding-bottom:0;">
+    <h1>Versioning<span class="dot">.</span></h1>
+    <p class="tagline">
+      Semantic versioning, the release process, and the full release
+      history for herdr-pomodoro.
+    </p>
+  </section>
+
+  <section id="semver">
+    <h2><span class="n">01</span>Semantic versioning</h2>
+    <p>
+      herdr-pomodoro follows <a href="https://semver.org/">Semantic
+      Versioning</a>: <code>MAJOR.MINOR.PATCH</code>, where MAJOR is a
+      breaking config/manifest/CLI change, MINOR is a backwards-compatible
+      feature, and PATCH is a fix or polish pass.
+    </p>
+    <p>
+      <code>Cargo.toml</code>'s <code>[package] version</code> is the single
+      source of truth; the binary reads it back at compile time
+      (<code>herdr-pomodoro --version</code>), and
+      <code>herdr-plugin.toml</code>'s <code>version</code> is kept in
+      lockstep with it.
+    </p>
+  </section>
+
+  <section id="releasing">
+    <h2><span class="n">02</span>Cutting a release</h2>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="body">
+        <p>As you make changes, add bullets under <code>## [Unreleased]</code>
+        in <code>CHANGELOG.md</code> (grouped as <code>### Added</code> /
+        <code>### Changed</code> / <code>### Fixed</code> etc., per
+        <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>).</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="body">
+        <p>Run the bump script. It bumps both TOML files, promotes
+        <code>[Unreleased]</code> into a dated <code>[X.Y.Z]</code> section,
+        refreshes <code>Cargo.lock</code>, and -- inside a git repo -- commits
+        and tags <code>vX.Y.Z</code>.</p>
+        <pre><code>scripts/bump-version &lt;major|minor|patch|X.Y.Z&gt;
+scripts/bump-version minor --dry-run   # preview only
+scripts/bump-version patch --no-git    # skip commit/tag</code></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="body">
+        <p>Push the commit and the tag:</p>
+        <pre><code>git push && git push origin vX.Y.Z</code></pre>
+      </div>
+    </div>
+
+    <p>Full history in
+    <a href="https://github.com/sazardev/herdr-pomodoro/blob/main/CHANGELOG.md">CHANGELOG.md</a>,
+    tagged releases on
+    <a href="https://github.com/sazardev/herdr-pomodoro/releases">GitHub Releases</a>.</p>
+  </section>
+
+  <section id="history">
+    <h2><span class="n">03</span>Release history</h2>
+
+    <div class="changelog-entry">
+      <div class="ver">0.2.0 <span style="color:var(--gray); font-weight:normal;">-- 2026-09-08</span></div>
+      <ul>
+        <li>Analog progress ring with rim ticks and a position marker</li>
+        <li>Toasts (started / paused / resumed / phase-complete) in every mood</li>
+        <li>First-run setup wizard with a live preview per view</li>
+        <li>Work-session history with a rolling stats overlay</li>
+        <li><em>Fixed:</em> digital/flashy no longer clip in short panes</li>
+        <li><em>Fixed:</em> minimal no longer truncates status in narrow panes</li>
+        <li><em>Fixed:</em> main pane now declares <code>placement = "split"</code>
+        explicitly instead of relying on Herdr's implicit overlay default</li>
+      </ul>
+    </div>
+
+    <div class="changelog-entry">
+      <div class="ver">0.1.0 <span style="color:var(--gray); font-weight:normal;">-- 2026-09-08</span></div>
+      <ul>
+        <li>Four static, text-only moods with auto-downgrade for small panes</li>
+        <li>Classic / deep-work / quick presets, plus custom presets</li>
+        <li>Theme-adaptive rendering via the standard ANSI palette</li>
+        <li>Global shortcuts and one-shot subcommands</li>
+        <li>Desktop notifications and terminal bell on phase completion</li>
+        <li>No-daemon design: timer truth is a wall-clock end-timestamp</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div>MIT License &middot; <a href="https://github.com/sazardev/herdr-pomodoro">github.com/sazardev/herdr-pomodoro</a></div>
+  <div class="made">built for <a href="https://herdr.dev">Herdr</a>, written in Rust</div>
+</footer>
+
+</body>
+</html>
