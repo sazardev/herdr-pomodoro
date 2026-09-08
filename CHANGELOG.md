@@ -9,6 +9,35 @@ MINOR for new backwards-compatible features, PATCH for fixes and polish.
 
 ## [Unreleased]
 
+### Added
+
+- `analog` renders a progress ring (a colored arc tracing remaining time,
+  like a kitchen visual timer) with 12 rim ticks and a current-position
+  marker, aspect-corrected so it stays round at any pane size.
+- A one-line toast (started/paused/resumed/phase-complete/view or preset
+  changed) shows for ~3s in every mood, not just `minimal`.
+- First-run setup wizard (view/preset/sound/notifications/auto-start, with
+  a live preview per view) shown once via a `[[startup]]` hook the first
+  time Herdr starts after install, or the first time the pane is opened on
+  an already-running session. Redo it any time with the `reset-onboarding`
+  action.
+- Work-session history: every completed/skipped work session appends a
+  timestamp to `history.log`. Press `i` for a rolling last-24h / 7-day /
+  all-time overlay, or run `herdr-pomodoro history` headlessly.
+
+### Fixed
+
+- `digital`/`flashy` no longer clip when a pane is too short for the
+  block-digit layout (needs 10 rows) -- they now fall all the way back to
+  `minimal` instead of rendering a `digital` view that doesn't fit.
+- `minimal` no longer truncates the status word in very narrow panes
+  (tightened field spacing).
+- The main `timer` pane now declares `placement = "split"` explicitly
+  instead of relying on Herdr's implicit default. An unspecified placement
+  registers as `overlay`, which opens fullscreen over the active pane and
+  captures all input; if the process doesn't exit cleanly it can get stuck
+  there, blocking whatever pane it covered.
+
 ## [0.1.0] - 2026-09-08
 
 ### Added

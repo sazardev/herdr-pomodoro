@@ -22,7 +22,7 @@ pub fn render(f: &mut Frame<'_>, area: Rect, app: &App) {
     let color = app.palette.phase_color(app.state.phase);
 
     let mut lines = vec![Line::from(format!(
-        "{}  {}  {}",
+        "{} {} {}",
         app.state.phase.short_label(),
         app.mmss(),
         status_word(app.state.status)

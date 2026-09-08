@@ -49,6 +49,23 @@ herdr plugin install <owner>/herdr-pomodoro
 which clones, previews, and runs the `[[build]]` step (`cargo build
 --release`) automatically.
 
+### First-run setup
+
+A `[[startup]]` hook opens the main pane straight into a setup wizard the
+first time Herdr starts after install -- pick your default view, preset,
+sound, notifications, and auto-start behavior, with a live preview of each
+view as you cycle through them. `enter` saves and starts; `esc`/`q` skips
+and keeps the defaults. It only shows once (tracked by a marker file in the
+plugin's state dir); redo it any time with `prefix+alt+p` after running
+`herdr plugin action invoke reset-onboarding --plugin sazardev.pomodoro`.
+
+Herdr doesn't run plugin commands at install/link time, only when its
+server (re)starts -- so on a session that's already running (like right
+after `herdr plugin link`), the wizard shows the first time you open the
+pane yourself rather than instantly. From the next `herdr` launch onward,
+the startup hook opens it for you automatically until it's been completed
+or skipped once.
+
 ## Using it
 
 - `herdr plugin action invoke open --plugin sazardev.pomodoro` (or the
@@ -86,6 +103,7 @@ All under `prefix+alt+...` so they don't collide with Herdr's own
 | `R` | Full reset (back to session 1) |
 | `m` | Cycle view: minimal -> digital -> analog -> flashy |
 | `p` | Cycle preset |
+| `i` | Toggle work-session history (last 24h / 7 days / all-time) |
 | `?` | Toggle help |
 | `q` / `esc` | Close the pane |
 
@@ -99,6 +117,17 @@ or not anything is watching it, and a phase-complete bell/notification
 still fires the next time any `herdr-pomodoro` process (a pane, or a
 one-shot action) touches the state file. To always run visible in the
 background, keep the pane open, or open it again after the notification.
+
+### History
+
+Every completed work session (finished naturally or skipped) appends one
+timestamp to `$HERDR_PLUGIN_STATE_DIR/history.log` -- a plain-text file, one
+epoch-millisecond integer per line, small enough (well under a kilobyte a
+year) to never need rotation. Press `i` in the pane for a small overlay with
+rolling last-24h / last-7-days / all-time counts, or run `herdr-pomodoro
+history` for the same numbers from the command line. There's no calendar
+day/week bucketing (would need a timezone-aware date crate this plugin
+otherwise has no reason to depend on) -- the windows are relative to *now*.
 
 ## Configuration
 

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>herdr-pomodoro -- a minimal Pomodoro timer for Herdr</title>
+<meta name="description" content="A minimal, elegant, theme-adaptive Pomodoro timer plugin for Herdr. Four moods, presets, history, and a first-run setup wizard -- ~900KB, no daemon.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site">
+  <nav class="nav">
+    <a class="brand" href="#top">herdr-pomodoro<span class="dot">.</span></a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#install">Install</a>
+      <a href="#versioning">Versioning</a>
+      <a href="https://github.com/sazardev/herdr-pomodoro">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<main class="wrap" id="top">
+
+  <section class="hero" style="border-top:none;">
+    <h1>herdr-pomodoro<span class="dot">.</span></h1>
+    <p class="tagline">
+      A minimal, elegant, theme-adaptive Pomodoro timer for
+      <a href="https://herdr.dev">Herdr</a>. Four moods, live presets,
+      session history, and a setup wizard on first run -- all in a single
+      ~900&nbsp;KB binary with no background daemon.
+    </p>
+
+    <div class="badges">
+      <span class="badge">version <b>0.1.0</b></span>
+      <span class="badge">written in <b>Rust</b></span>
+      <span class="badge">license <b>MIT</b></span>
+      <span class="badge">no daemon, no deps at runtime</span>
+    </div>
+
+    <div class="cta-row">
+      <a class="btn primary" href="#install">Install</a>
+      <a class="btn" href="https://github.com/sazardev/herdr-pomodoro">View on GitHub</a>
+    </div>
+
+    <figure class="demo-frame">
+      <img src="assets/demo.gif" alt="Terminal recording of herdr-pomodoro: starting a session, skipping a phase, cycling through minimal, digital, analog and flashy views, and opening the help and stats overlays.">
+    </figure>
+  </section>
+
+  <section id="what">
+    <h2><span class="n">01</span>What it is</h2>
+    <p>
+      herdr-pomodoro is a <a href="https://herdr.dev/docs/plugins/">Herdr plugin</a>
+      -- a Pomodoro timer that lives in a terminal pane instead of a separate
+      app. It docks anywhere in your Herdr layout: a thin strip in a side
+      drawer, a full widget pane, or a quick-glance popup. Everything is
+      driven by simple keybindings and one small Rust binary; there's no
+      GUI, no background process, and no dependency to install beyond Herdr
+      itself.
+    </p>
+    <p>
+      It follows whatever Herdr theme you're running (gruvbox, dracula,
+      catppuccin, nord, and the rest) automatically, because it draws with
+      the standard ANSI palette instead of hardcoded colors -- the same
+      mechanism any theme-aware terminal app uses. No plugin-side theme
+      configuration needed.
+    </p>
+  </section>
+
+  <section id="features">
+    <h2><span class="n">02</span>Features</h2>
+    <div class="grid">
+      <div class="card">
+        <h3><span class="k">$</span> Four moods</h3>
+        <p>minimal, digital, analog, flashy. Static, text-only, no icons --
+        the pane auto-downgrades to a smaller mood when it doesn't have
+        room, so it never clips in a narrow split.</p>
+      </div>
+      <div class="card">
+        <h3><span class="k">$</span> Theme-adaptive</h3>
+        <p>Colors are drawn with the standard ANSI palette, used sparingly.
+        Herdr's active theme remaps them automatically -- override with hex
+        values in <code>config.toml</code> if you want a fixed look.</p>
+      </div>
+      <div class="card">
+        <h3><span class="k">$</span> Presets & shortcuts</h3>
+        <p>classic (25/5/15), deep-work (50/10/20), quick (15/3/10), or your
+        own. Global shortcuts and one-shot subcommands for start, pause,
+        skip, reset, and cycling views.</p>
+      </div>
+      <div class="card">
+        <h3><span class="k">$</span> Session history</h3>
+        <p>Every completed work session appends a timestamp to a plain-text
+        log. Press <code>i</code> for rolling last-24h / 7-day / all-time
+        counts, or run it headlessly.</p>
+      </div>
+      <div class="card">
+        <h3><span class="k">$</span> First-run setup wizard</h3>
+        <p>Pick your view, preset, sound, and notifications with a live
+        preview, right in the pane -- shown once via a startup hook, redo it
+        any time.</p>
+      </div>
+      <div class="card">
+        <h3><span class="k">$</span> No daemon</h3>
+        <p>Timer truth is a wall-clock end-timestamp in a state file.
+        Nothing runs in the background while the pane is closed, and the
+        countdown stays accurate regardless.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenshots">
+    <h2><span class="n">03</span>Screenshots</h2>
+    <p>The same binary, four different personalities. Pick one as your
+    default in <code>config.toml</code>, or cycle through them with
+    <code>m</code>.</p>
+
+    <div class="shots">
+      <figure class="shot">
+        <img src="assets/screenshot-digital.png" alt="digital mood: plain big block digits, the calm default">
+        <figcaption><b>digital</b> -- plain big digits, the calm default</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/screenshot-flashy.png" alt="flashy mood: same layout as digital, colored by phase">
+        <figcaption><b>flashy</b> -- same layout, colored by phase</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/screenshot-analog.png" alt="analog mood: a countdown ring, like a kitchen visual timer">
+        <figcaption><b>analog</b> -- a countdown ring, like a kitchen timer</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/screenshot-minimal.png" alt="minimal mood: a one-line drawer strip">
+        <figcaption><b>minimal</b> -- a one-line drawer strip</figcaption>
+      </figure>
+    </div>
+
+    <p style="margin-top:28px;">A live session, and the two overlays
+    (<code>?</code> for help, <code>i</code> for history) that work on top
+    of any mood.</p>
+
+    <div class="shots overlays">
+      <figure class="shot">
+        <img src="assets/screenshot-running.png" alt="a work session in progress, flashy mood, red progress bar about half full">
+        <figcaption><b>running</b> -- mid work session</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/screenshot-stats.png" alt="the stats overlay showing rolling work session counts">
+        <figcaption><b>stats</b> -- last 24h / 7 days / all-time</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2><span class="n">04</span>Install</h2>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="body">
+        <p>From the marketplace, once published:</p>
+        <pre><code>herdr plugin install sazardev/herdr-pomodoro</code></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="body">
+        <p>Or for local development, clone it, build it, and link it:</p>
+        <pre><code>git clone https://github.com/sazardev/herdr-pomodoro
+cd herdr-pomodoro
+cargo build --release
+herdr plugin link .</code></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="body">
+        <p>Open the pane. A setup wizard walks you through your defaults
+        the first time.</p>
+        <pre><code>herdr plugin action invoke open --plugin sazardev.pomodoro
+# or just: prefix+alt+p</code></pre>
+      </div>
+    </div>
+
+    <p>Default shortcuts, once installed:</p>
+    <table class="keys">
+      <tr><th>shortcut</th><th>action</th></tr>
+      <tr><td>prefix+alt+p</td><td>Open / focus the pane</td></tr>
+      <tr><td>prefix+alt+s</td><td>Start / pause</td></tr>
+      <tr><td>prefix+alt+n</td><td>Skip to next phase</td></tr>
+      <tr><td>prefix+alt+r</td><td>Reset current phase</td></tr>
+      <tr><td>prefix+alt+m</td><td>Cycle view</td></tr>
+    </table>
+
+    <p style="margin-top:24px;">In-pane keys, once the pane is focused:</p>
+    <table class="keys">
+      <tr><th>key</th><th>action</th></tr>
+      <tr><td>space / s</td><td>Start, pause, resume</td></tr>
+      <tr><td>n</td><td>Skip to next phase</td></tr>
+      <tr><td>r / R</td><td>Reset phase / full reset</td></tr>
+      <tr><td>m</td><td>Cycle view</td></tr>
+      <tr><td>p</td><td>Cycle preset</td></tr>
+      <tr><td>i</td><td>Toggle history</td></tr>
+      <tr><td>?</td><td>Toggle help</td></tr>
+      <tr><td>q / esc</td><td>Close</td></tr>
+    </table>
+  </section>
+
+  <section id="versioning">
+    <h2><span class="n">05</span>Versioning</h2>
+    <p>
+      herdr-pomodoro follows <a href="https://semver.org/">Semantic
+      Versioning</a>. <code>Cargo.toml</code>'s <code>[package] version</code>
+      is the single source of truth, kept in lockstep with
+      <code>herdr-plugin.toml</code>; the binary reports it back with
+      <code>herdr-pomodoro --version</code>. Full history in
+      <a href="https://github.com/sazardev/herdr-pomodoro/blob/main/CHANGELOG.md">CHANGELOG.md</a>.
+    </p>
+
+    <div class="changelog-entry">
+      <div class="ver">0.1.0</div>
+      <ul>
+        <li>Four static, text-only moods with auto-downgrade for small panes</li>
+        <li>Classic / deep-work / quick presets, plus custom presets</li>
+        <li>Theme-adaptive rendering via the standard ANSI palette</li>
+        <li>Global shortcuts and one-shot subcommands</li>
+        <li>Desktop notifications and terminal bell on phase completion</li>
+        <li>No-daemon design: timer truth is a wall-clock end-timestamp</li>
+        <li>Analog progress ring with rim ticks and a position marker</li>
+        <li>Toasts (started / paused / resumed / phase-complete) in every mood</li>
+        <li>First-run setup wizard with a live preview per view</li>
+        <li>Work-session history with a rolling stats overlay</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div>MIT License &middot; <a href="https://github.com/sazardev/herdr-pomodoro">github.com/sazardev/herdr-pomodoro</a></div>
+  <div class="made">built for <a href="https://herdr.dev">Herdr</a>, written in Rust</div>
+</footer>
+
+</body>
+</html>

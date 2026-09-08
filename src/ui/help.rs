@@ -17,8 +17,8 @@ pub fn session_line(done: u32, total: u32, phase: Phase) -> Line<'static> {
 
 pub fn render(f: &mut Frame<'_>, area: Rect, _app: &App) {
     let width = area.width.min(38);
-    let height = area.height.min(12);
-    if width < 20 || height < 8 {
+    let height = area.height.min(13);
+    if width < 20 || height < 9 {
         return;
     }
     let x = area.x + (area.width.saturating_sub(width)) / 2;
@@ -34,6 +34,7 @@ pub fn render(f: &mut Frame<'_>, area: Rect, _app: &App) {
         Line::from("R          full reset"),
         Line::from("m          cycle view"),
         Line::from("p          cycle preset"),
+        Line::from("i          toggle stats"),
         Line::from("?          toggle this help"),
         Line::from("q / esc    close"),
     ];

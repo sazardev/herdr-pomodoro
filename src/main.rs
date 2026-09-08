@@ -1,5 +1,7 @@
 mod config;
+mod history;
 mod notify;
+mod onboard;
 mod state;
 mod theme;
 mod timer;
@@ -17,7 +19,7 @@ use std::process::{Command, ExitCode};
 /// sync with `herdr-plugin.toml` -- see CHANGELOG.md for release history.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const USAGE: &str = "usage: herdr-pomodoro [run|open|start|pause|toggle|skip|reset [--all]|cycle-mood|cycle-preset|status|version]";
+const USAGE: &str = "usage: herdr-pomodoro [run|open|start|pause|toggle|skip|reset [--all]|cycle-mood|cycle-preset|reset-onboarding|status|history|version]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().collect();
@@ -26,6 +28,7 @@ fn main() -> ExitCode {
     match cmd {
         "run" => run_tui(),
         "open" => open_pane(),
+        "auto-open" => auto_open_if_needed(),
         "start" | "resume" => apply(timer::start_or_resume),
         "pause" => apply(|s, _c| timer::pause(s)),
         "toggle" => apply(timer::toggle),
@@ -40,7 +43,9 @@ fn main() -> ExitCode {
         }
         "cycle-mood" => cycle_mood(),
         "cycle-preset" => cycle_preset(),
+        "reset-onboarding" => onboard::reset(&state_dir()),
         "status" => print_status(),
+        "history" => print_history(),
         "-V" | "--version" | "version" => println!("herdr-pomodoro {VERSION}"),
         "-h" | "--help" | "help" => println!("{USAGE}"),
         other => {
@@ -82,7 +87,11 @@ fn apply(f: impl FnOnce(&mut State, &Config)) {
     let cdir = config_dir();
     let cfg = Config::load_or_init(&cdir);
     let mut st = load_state(&cfg, &sdir);
+    let before = st.completed_work_sessions;
     f(&mut st, &cfg);
+    if st.completed_work_sessions > before {
+        history::record(&sdir);
+    }
     let _ = st.save(&sdir);
 }
 
@@ -122,6 +131,11 @@ fn print_status() {
     );
 }
 
+fn print_history() {
+    let s = history::summarize(&state_dir());
+    println!("last_24h={} last_7d={} total={}", s.last_24h, s.last_7d, s.total);
+}
+
 /// Ask the running Herdr instance to open this plugin's pane, using the
 /// binary Herdr itself points us at via HERDR_BIN_PATH so this works the
 /// same whether Herdr is talking over a Unix socket or a Windows named
@@ -154,6 +168,21 @@ fn open_pane() {
     }
 }
 
+/// Invoked from the manifest's `[[startup]]` hook, which runs once per
+/// enabled plugin each time Herdr's server (re)starts -- not at install/link
+/// time itself (Herdr doesn't run plugin commands then). This is the
+/// closest thing to "show setup as soon as it's installed" the plugin
+/// startup-hook API allows: the first time Herdr starts after install, the
+/// onboarding marker is still absent, so this opens the pane and the user
+/// lands straight in the setup wizard. Every later restart it's a silent
+/// no-op.
+fn auto_open_if_needed() {
+    if onboard::is_done(&state_dir()) {
+        return;
+    }
+    open_pane();
+}
+
 fn run_tui() {
     let sdir = state_dir();
     let cdir = config_dir();
@@ -163,8 +192,17 @@ fn run_tui() {
     let entrypoint = env::var("HERDR_PLUGIN_ENTRYPOINT_ID").unwrap_or_default();
     let (initial_mood, persist_mood) =
         if entrypoint == "quick" { (Some(ui::Mood::Digital), false) } else { (None, true) };
+    let show_onboarding = entrypoint != "quick" && !onboard::is_done(&sdir);
 
-    let mut app = ui::App::new(state, cfg, initial_mood, persist_mood, cdir.clone());
+    let mut app = ui::App::new(
+        state,
+        cfg,
+        initial_mood,
+        persist_mood,
+        cdir.clone(),
+        sdir.clone(),
+        show_onboarding,
+    );
 
     if let Err(e) = tui::run(&mut app, &sdir, &cdir) {
         eprintln!("herdr-pomodoro: {e}");
@@ -172,14 +210,14 @@ fn run_tui() {
 }
 
 mod tui {
-    use super::{config, notify, state, timer, ui};
+    use super::{config, history, notify, onboard, state, timer, ui};
     use crossterm::{
         event::{self, Event, KeyCode, KeyEventKind},
         execute,
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     };
     use ratatui::{backend::CrosstermBackend, Terminal};
-    use state::{Phase, State};
+    use state::{Phase, State, Status};
     use std::io::{self, Stdout};
     use std::path::Path;
     use std::time::{Duration, SystemTime};
@@ -230,28 +268,45 @@ mod tui {
                 last_config_mtime = current_config_mtime;
             }
 
-            let prev_phase = app.state.phase;
-            if timer::tick_check_completion(&mut app.state, &app.cfg) {
-                let _ = app.state.save(sdir);
-                last_state_mtime = mtime(&state_path);
-                if app.cfg.sound {
-                    notify::bell();
+            let onboarding = matches!(app.screen, ui::Screen::Onboarding(_));
+
+            if !onboarding {
+                let prev_phase = app.state.phase;
+                let prev_completed = app.state.completed_work_sessions;
+                if timer::tick_check_completion(&mut app.state, &app.cfg) {
+                    let _ = app.state.save(sdir);
+                    last_state_mtime = mtime(&state_path);
+                    if app.state.completed_work_sessions > prev_completed {
+                        history::record(sdir);
+                    }
+                    if app.cfg.sound {
+                        notify::bell();
+                    }
+                    if app.cfg.notify {
+                        let body = match prev_phase {
+                            Phase::Work => "Work session complete -- take a break",
+                            Phase::ShortBreak | Phase::LongBreak => "Break's over -- back to work",
+                        };
+                        notify::system_notify("herdr-pomodoro", body);
+                    }
+                    app.note_phase_complete(prev_phase);
                 }
-                if app.cfg.notify {
-                    let body = match prev_phase {
-                        Phase::Work => "Work session complete -- take a break",
-                        Phase::ShortBreak | Phase::LongBreak => "Break's over -- back to work",
-                    };
-                    notify::system_notify("herdr-pomodoro", body);
-                }
-                app.note_phase_complete(prev_phase);
             }
 
             guard.terminal.draw(|f| ui::render(f, app))?;
 
             if event::poll(Duration::from_millis(200))? {
                 if let Event::Key(key) = event::read()? {
-                    if key.kind == KeyEventKind::Press && handle_key(app, sdir, key.code) {
+                    if key.kind != KeyEventKind::Press {
+                        continue;
+                    }
+                    let quit = if onboarding {
+                        handle_onboarding_key(app, sdir, cdir, key.code);
+                        false
+                    } else {
+                        handle_key(app, sdir, key.code)
+                    };
+                    if quit {
                         break;
                     }
                 }
@@ -260,16 +315,70 @@ mod tui {
         Ok(())
     }
 
+    fn handle_onboarding_key(app: &mut ui::App, sdir: &Path, cdir: &Path, code: KeyCode) {
+        match code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                if let ui::Screen::Onboarding(ob) = &mut app.screen {
+                    ui::onboarding::select_prev(ob);
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if let ui::Screen::Onboarding(ob) = &mut app.screen {
+                    ui::onboarding::select_next(ob);
+                }
+            }
+            KeyCode::Left | KeyCode::Char('h') => onboarding_cycle(app, -1),
+            KeyCode::Right | KeyCode::Char('l') | KeyCode::Char(' ') => onboarding_cycle(app, 1),
+            KeyCode::Enter => {
+                app.cfg.save(cdir);
+                let _ = app.state.save(sdir);
+                onboard::mark_done(sdir);
+                app.screen = ui::Screen::Timer;
+                app.set_toast("setup saved -- press ? any time for help");
+            }
+            KeyCode::Esc | KeyCode::Char('q') => {
+                // Skip: discard any in-memory tweaks and reload pristine
+                // defaults from disk rather than persisting a half-chosen
+                // config.
+                app.cfg = config::Config::load_or_init(cdir);
+                app.state = super::load_state(&app.cfg, sdir);
+                app.palette = crate::theme::Palette::from_config(&app.cfg.colors);
+                onboard::mark_done(sdir);
+                app.screen = ui::Screen::Timer;
+            }
+            _ => {}
+        }
+    }
+
+    fn onboarding_cycle(app: &mut ui::App, delta: i32) {
+        let selected = match &app.screen {
+            ui::Screen::Onboarding(ob) => ob.selected(),
+            ui::Screen::Timer => return,
+        };
+        ui::onboarding::cycle_value(app, selected, delta);
+    }
+
     fn handle_key(app: &mut ui::App, sdir: &Path, code: KeyCode) -> bool {
         match code {
             KeyCode::Char('q') | KeyCode::Esc => return true,
             KeyCode::Char(' ') | KeyCode::Char('s') => {
+                let was = app.state.status;
                 timer::toggle(&mut app.state, &app.cfg);
                 let _ = app.state.save(sdir);
+                let msg = match was {
+                    Status::Idle => format!("{} started", app.state.phase.label().to_lowercase()),
+                    Status::Paused => "resumed".to_string(),
+                    Status::Running => "paused".to_string(),
+                };
+                app.set_toast(msg);
             }
             KeyCode::Char('n') => {
+                let before = app.state.completed_work_sessions;
                 timer::skip(&mut app.state, &app.cfg);
                 let _ = app.state.save(sdir);
+                if app.state.completed_work_sessions > before {
+                    history::record(sdir);
+                }
                 app.set_toast("skipped to next phase");
             }
             KeyCode::Char('R') => {
@@ -284,7 +393,14 @@ mod tui {
             }
             KeyCode::Char('m') => app.cycle_mood(),
             KeyCode::Char('p') => app.cycle_preset(),
-            KeyCode::Char('?') => app.show_help = !app.show_help,
+            KeyCode::Char('?') => {
+                app.show_help = !app.show_help;
+                app.show_stats = false;
+            }
+            KeyCode::Char('i') => {
+                app.show_stats = !app.show_stats;
+                app.show_help = false;
+            }
             _ => {}
         }
         false

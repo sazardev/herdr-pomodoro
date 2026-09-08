@@ -8,12 +8,24 @@ platforms = ["linux", "macos"]
 [[build]]
 command = ["cargo", "build", "--release"]
 
-# Main dockable widget. Open it wherever you like (split/tab/zoomed/overlay)
-# with `herdr plugin pane open`, then use Herdr's normal pane.move/swap to
-# park it in a drawer on the left, right, wherever suits your layout.
+# Herdr doesn't run plugin commands at install/link time, only when its
+# server (re)starts. This is the closest thing to "show setup right after
+# installing": the first time Herdr starts after install, no onboarding
+# marker exists yet, so this opens the pane straight into the setup
+# wizard. Every later restart it's a silent no-op (see src/onboard.rs).
+[[startup]]
+command = ["./target/release/herdr-pomodoro", "auto-open"]
+
+# Main dockable widget. Open it wherever you like (split/tab/zoomed) with
+# `herdr plugin pane open`, then use Herdr's normal pane.move/swap to park
+# it in a drawer on the left, right, wherever suits your layout. Placement
+# is explicit here (rather than left to Herdr's default) because an
+# unspecified placement registers this pane as "overlay" -- fullscreen,
+# capturing all input -- which froze other panes solid during testing.
 [[panes]]
 id = "timer"
 title = "Pomodoro"
+placement = "split"
 command = ["./target/release/herdr-pomodoro", "run"]
 
 # Small transient popup for a quick glance without touching your layout.
@@ -60,6 +72,12 @@ id = "cycle-preset"
 title = "Pomodoro: cycle preset"
 contexts = ["workspace"]
 command = ["./target/release/herdr-pomodoro", "cycle-preset"]
+
+[[actions]]
+id = "reset-onboarding"
+title = "Pomodoro: redo first-run setup"
+contexts = ["workspace"]
+command = ["./target/release/herdr-pomodoro", "reset-onboarding"]
 
 # Default shortcuts live under prefix+alt+... to avoid colliding with
 # Herdr's own prefix+<letter> bindings. Rebind freely in your own

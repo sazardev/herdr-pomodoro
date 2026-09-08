@@ -7,6 +7,9 @@ use ratatui::{
     Frame,
 };
 
+/// phase label + digit font + status + session + progress bar + toast.
+pub const MIN_ROWS: u16 = 1 + font::HEIGHT + 1 + 1 + 1 + 1;
+
 fn status_line(status: Status) -> Line<'static> {
     let txt = match status {
         Status::Running => "running",
@@ -26,6 +29,7 @@ pub fn render(f: &mut Frame<'_>, area: Rect, app: &App) {
             Constraint::Min(0),
             Constraint::Length(1),
             Constraint::Length(font::HEIGHT),
+            Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
@@ -58,4 +62,6 @@ pub fn render(f: &mut Frame<'_>, area: Rect, app: &App) {
             "\u{2588}".repeat(filled.min(width)) + &"\u{2591}".repeat(width.saturating_sub(filled));
         f.render_widget(Paragraph::new(Line::from(bar)).alignment(Alignment::Center), chunks[5]);
     }
+
+    f.render_widget(Paragraph::new(super::toast_line(app)).alignment(Alignment::Center), chunks[6]);
 }

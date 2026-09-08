@@ -4,3 +4,6 @@
 /.agents/
 /.claude/
 /skills-lock.json
+
+# Local Serena MCP project cache -- not part of the plugin.
+/.serena/

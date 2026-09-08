@@ -4,14 +4,28 @@ mod flashy;
 mod font;
 mod help;
 mod minimal;
+pub mod onboarding;
+mod stats;
 
 use crate::config::Config;
 use crate::state::{Phase, State};
 use crate::theme::Palette;
 use ratatui::layout::Rect;
+use ratatui::text::Line;
 use ratatui::Frame;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+
+const TOAST_LIFETIME: Duration = Duration::from_secs(3);
+
+/// Blank when there's no active toast, so callers can always reserve a
+/// fixed-height row for it instead of having the layout jump around.
+pub fn toast_line(app: &App) -> Line<'static> {
+    match &app.toast {
+        Some((msg, at)) if at.elapsed() < TOAST_LIFETIME => Line::from(msg.clone()),
+        _ => Line::from(""),
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mood {
@@ -48,6 +62,20 @@ impl Mood {
             Mood::Flashy => Mood::Minimal,
         }
     }
+
+    pub fn prev(self) -> Mood {
+        match self {
+            Mood::Minimal => Mood::Flashy,
+            Mood::Digital => Mood::Minimal,
+            Mood::Analog => Mood::Digital,
+            Mood::Flashy => Mood::Analog,
+        }
+    }
+}
+
+pub enum Screen {
+    Onboarding(onboarding::State),
+    Timer,
 }
 
 pub struct App {
@@ -59,29 +87,43 @@ pub struct App {
     /// 'm' in the main dockable pane, which writes it back to config.toml.
     pub mood_override: Option<Mood>,
     pub show_help: bool,
+    pub show_stats: bool,
     pub toast: Option<(String, Instant)>,
     pub persist_mood: bool,
+    pub screen: Screen,
     config_dir: PathBuf,
+    state_dir: PathBuf,
 }
 
 impl App {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         state: State,
         cfg: Config,
         initial_mood: Option<Mood>,
         persist_mood: bool,
         config_dir: PathBuf,
+        state_dir: PathBuf,
+        show_onboarding: bool,
     ) -> App {
         let palette = Palette::from_config(&cfg.colors);
+        let screen = if show_onboarding {
+            Screen::Onboarding(onboarding::State::new())
+        } else {
+            Screen::Timer
+        };
         App {
             state,
             cfg,
             palette,
             mood_override: initial_mood,
             show_help: false,
+            show_stats: false,
             toast: None,
             persist_mood,
+            screen,
             config_dir,
+            state_dir,
         }
     }
 
@@ -94,9 +136,16 @@ impl App {
     /// as a full analog/flashy pane or a one-line drawer strip.
     pub fn effective_mood(&self, area: Rect) -> Mood {
         let base = self.configured_mood();
-        if area.width < 18 || area.height < 3 {
+        // `digital`/`flashy` need at least MIN_DIGITAL_ROWS of height (phase
+        // label + 5-row digit font + status + session + bar) and enough
+        // width for "88:88" in the block font (~28 cols) or they clip
+        // instead of gracefully shrinking -- fall all the way back to
+        // `minimal` rather than to a `digital` that doesn't actually fit.
+        const MIN_DIGITAL_ROWS: u16 = digital::MIN_ROWS;
+        const MIN_DIGITAL_COLS: u16 = 30;
+        if area.width < MIN_DIGITAL_COLS || area.height < MIN_DIGITAL_ROWS {
             Mood::Minimal
-        } else if (area.width < 34 || area.height < 10) && base != Mood::Minimal {
+        } else if (area.width < 34 || area.height < 12) && base != Mood::Minimal {
             Mood::Digital
         } else {
             base
@@ -148,6 +197,10 @@ impl App {
         &self.config_dir
     }
 
+    fn state_dir(&self) -> &std::path::Path {
+        &self.state_dir
+    }
+
     pub fn remaining_secs(&self) -> u64 {
         self.state.live_remaining_secs()
     }
@@ -170,16 +223,29 @@ impl App {
     }
 }
 
-pub fn render(f: &mut Frame<'_>, app: &App) {
-    let area = f.area();
-    let mood = app.effective_mood(area);
+pub(crate) fn render_mood(f: &mut Frame<'_>, area: Rect, app: &App, mood: Mood) {
     match mood {
         Mood::Minimal => minimal::render(f, area, app),
         Mood::Digital => digital::render(f, area, app),
         Mood::Analog => analog::render(f, area, app),
         Mood::Flashy => flashy::render(f, area, app),
     }
-    if app.show_help && mood != Mood::Minimal {
-        help::render(f, area, app);
+}
+
+pub fn render(f: &mut Frame<'_>, app: &App) {
+    let area = f.area();
+    match &app.screen {
+        Screen::Onboarding(ob) => onboarding::render(f, area, app, ob),
+        Screen::Timer => {
+            let mood = app.effective_mood(area);
+            render_mood(f, area, app, mood);
+            if mood != Mood::Minimal {
+                if app.show_help {
+                    help::render(f, area, app);
+                } else if app.show_stats {
+                    stats::render(f, area, app.state_dir());
+                }
+            }
+        }
     }
 }

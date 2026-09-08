@@ -22,6 +22,7 @@ pub fn render(f: &mut Frame<'_>, area: Rect, app: &App) {
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
+            Constraint::Length(1),
             Constraint::Min(0),
         ])
         .split(area);
@@ -63,4 +64,6 @@ pub fn render(f: &mut Frame<'_>, area: Rect, app: &App) {
             chunks[5],
         );
     }
+
+    f.render_widget(Paragraph::new(super::toast_line(app)).alignment(Alignment::Center), chunks[6]);
 }
