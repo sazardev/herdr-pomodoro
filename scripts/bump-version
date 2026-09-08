@@ -112,7 +112,12 @@ if ($trimmed eq '' && !$allow_empty) {
 
 my $date = strftime('%Y-%m-%d', localtime);
 my $new_section = "## [Unreleased]\n\n## [$new] - $date\n" . ($trimmed eq '' ? "\n" : $unreleased);
-(my $new_changelog = $changelog_src) =~ s/\Q## [Unreleased]\n$unreleased\E/$new_section/s;
+# quotemeta() (not \Q..\E) because $unreleased already contains real newline
+# bytes -- \Q..\E treats a literal "\n" typed in the pattern as the two
+# characters backslash+n rather than interpreting it as a newline, so it
+# would never match and this substitution would silently no-op.
+my $old_block = quotemeta("## [Unreleased]\n" . $unreleased);
+(my $new_changelog = $changelog_src) =~ s/$old_block/$new_section/s;
 $new_changelog =~ s/\n{3,}/\n\n/g;
 
 my ($repo_url) = $cargo_src =~ /^repository\s*=\s*"([^"]+)"/m;

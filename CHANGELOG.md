@@ -9,6 +9,8 @@ MINOR for new backwards-compatible features, PATCH for fixes and polish.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-08
+
 ### Added
 
 - `analog` renders a progress ring (a colored arc tracing remaining time,
